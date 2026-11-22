@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+tarjeta.json
+usuarios.json
+secrets.py
+config_local.py
+.env
+.env.*
+!.env.example
+*.key
+*.p12
+*.pfx
+*.db
+*.sqlite
+*.sqlite3
+*.log
