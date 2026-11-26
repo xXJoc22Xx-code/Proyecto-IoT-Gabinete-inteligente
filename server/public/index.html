@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gabinete inteligente</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Saltar al contenido</a>
+<header>
+  <div>
+    <p class="eyebrow">PROYECTO IoT · CONTROL DE ACCESO</p>
+    <h1>Gabinete inteligente</h1>
+  </div>
+  <button id="logout" hidden>Cerrar sesión</button>
+</header>
+
+<main id="main">
+  <div id="loginNotice"><p id="notice" role="status" aria-live="polite" aria-atomic="true"></p></div>
+
+  <section id="login" class="panel narrow">
+    <h2>Acceso administrativo</h2>
+    <p>Gestiona usuarios, tarjetas y el historial del gabinete.</p>
+    <form id="loginForm" class="stack">
+      <label>Usuario<input name="user" autocomplete="username" required></label>
+      <label>Contraseña administrativa<input name="password" type="password" autocomplete="current-password" required></label>
+      <button>Iniciar sesión</button>
+    </form>
+  </section>
+
+  <div id="dashboard" hidden>
+    <nav id="dashboardNav" aria-label="Secciones del gabinete">
+      <div role="tablist" aria-label="Secciones">
+        <button type="button" role="tab" id="tab-status" aria-controls="status" aria-selected="true">Estado</button>
+        <button type="button" role="tab" id="tab-history" aria-controls="history" aria-selected="false" tabindex="-1">Eventos</button>
+        <button type="button" role="tab" id="tab-admin" aria-controls="admin" aria-selected="false" tabindex="-1">Usuarios</button>
+        <button type="button" role="tab" id="tab-auditPanel" aria-controls="auditPanel" aria-selected="false" tabindex="-1">Auditoría</button>
+      </div>
+      <a href="/editor/" target="_blank" rel="noopener">Editor Node-RED (otra pestaña)</a>
+    </nav>
+    <div id="dashboardNotice"></div>
+
+    <!-- ESTADO -->
+    <section id="status" class="panel" role="tabpanel" aria-labelledby="tab-status" tabindex="0">
+      <div class="sectionHead">
+        <h2>Estado actual</h2>
+        <button type="button" id="soundToggle" class="secondary" aria-pressed="false">🔕 Alertas sonoras: desactivadas</button>
+      </div>
+
+      <div id="banner" class="banner ok" aria-live="assertive" aria-atomic="true">
+        <span id="bannerIcon" class="icon" aria-hidden="true">✔</span>
+        <div>
+          <strong id="bannerTitle">Esperando datos…</strong>
+          <ul id="bannerList"></ul>
+        </div>
+      </div>
+
+      <div class="cards">
+        <article>
+          <h3>Comunicación</h3>
+          <ul class="statusList">
+            <li><span>Broker MQTTS</span><b id="stBroker" class="badge">—</b></li>
+            <li><span>Control de acceso (ESP32 1)</span><b id="stAccess" class="badge">—</b></li>
+            <li><span>Gabinete y sensores de presión (ESP32 2)</span><b id="stCabinet" class="badge">—</b></li>
+          </ul>
+          <p id="connection" class="visually-hidden"></p>
+          <p id="devices" class="visually-hidden"></p>
+        </article>
+
+        <article>
+          <h3>Puerta del gabinete</h3>
+          <b id="stDoor" class="badge big">—</b>
+          <p id="doorTime" class="meta"></p>
+          <p id="lastAccess" class="meta"></p>
+          <p class="meta">Estado según la última orden al servo; no hay sensor de puerta.</p>
+        </article>
+
+        <article>
+          <h3>Presión y presencia</h3>
+          <strong id="pressure" class="pressureMetric">Sin lectura</strong>
+          <ul id="pressureSensors" class="pressureSensors"></ul>
+          <p id="presence">Estado desconocido</p>
+          <div id="spark" class="spark"></div>
+          <small id="pressureTime"></small>
+          <p class="meta">Lecturas ADC de 0 a 4095. La presencia requiere calibración; no se mide peso en gramos.</p>
+        </article>
+
+        <article>
+          <h3>Permisos en la ESP32</h3>
+          <b id="stSync" class="badge big">—</b>
+          <p id="sync" class="meta">Pendiente</p>
+          <small>Un cambio requiere confirmación de la placa. Sin sincronización vigente, no se solicita abrir.</small>
+        </article>
+      </div>
+    </section>
+
+    <!-- EVENTOS -->
+    <section id="history" class="panel" role="tabpanel" aria-labelledby="tab-history" tabindex="0" hidden>
+      <div class="sectionHead">
+        <h2>Historial de eventos</h2>
+        <button id="export" class="secondary">Exportar JSON</button>
+      </div>
+      <p>Últimos 200 eventos, hora de America/Mexico_City. Los datos simulados se identifican explícitamente.</p>
+      <div class="filters">
+        <label>Categoría
+          <select id="filterCat">
+            <option value="all">Todas</option>
+            <option value="access">Acceso</option>
+            <option value="door">Puerta</option>
+            <option value="inventory">Inventario y presión</option>
+            <option value="system">Sistema</option>
+            <option value="warn">Solo avisos y fallas</option>
+          </select>
+        </label>
+        <p id="eventCount" class="meta" role="status" aria-live="polite"></p>
+      </div>
+      <div class="tableWrap">
+        <table class="responsive">
+          <caption class="visually-hidden">Historial de eventos del gabinete</caption>
+          <thead><tr><th scope="col">Fecha</th><th scope="col">Usuario</th><th scope="col">Evento</th><th scope="col">Detalle</th></tr></thead>
+          <tbody id="events"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button type="button" id="prevPage" class="secondary">← Anterior</button>
+        <span id="pageInfo" role="status" aria-live="polite"></span>
+        <button type="button" id="nextPage" class="secondary">Siguiente →</button>
+      </div>
+    </section>
+
+    <!-- USUARIOS -->
+    <section id="admin" class="panel" role="tabpanel" aria-labelledby="tab-admin" tabindex="0" hidden>
+      <h2>Administración de usuarios</h2>
+      <p>El acceso por teclado usa <b>ID#</b> seguido de <b>contraseña#</b>. Las tarjetas son una alternativa.</p>
+      <p id="userFormMode" class="modeTag" role="status">Nuevo usuario</p>
+      <form id="userForm" class="userForm">
+        <label>ID numérico<input name="id" inputmode="numeric" pattern="[1-9][0-9]{0,5}" maxlength="6" required></label>
+        <label>Nombre<input name="name" maxlength="80" required></label>
+        <label>Nueva contraseña<input name="password" type="password" autocomplete="new-password" required pattern="[0-9A-D]{6,12}" maxlength="12" aria-describedby="pwHint"><small id="pwHint">6–12 caracteres: 0–9 y A–D. Al editar, vacía conserva la anterior.</small></label>
+        <label class="check"><input name="active" type="checkbox" checked> Usuario activo</label>
+        <div class="formActions">
+          <button id="saveUser">Crear usuario</button>
+          <button type="button" id="clearUser" class="secondary">Limpiar formulario</button>
+        </div>
+      </form>
+      <div class="tableWrap">
+        <table class="responsive">
+          <caption class="visually-hidden">Usuarios registrados</caption>
+          <thead><tr><th scope="col">ID</th><th scope="col">Nombre</th><th scope="col">Estado</th><th scope="col">Tarjetas</th><th scope="col">Acciones</th></tr></thead>
+          <tbody id="users"></tbody>
+        </table>
+      </div>
+      <aside>
+        <h3>Registro de tarjeta</h3>
+        <p id="enrollment">Selecciona “Agregar tarjeta” en un usuario. Acerca una sola tarjeta al lector y confirma aquí.</p>
+        <button id="confirmCard" disabled>Confirmar tarjeta detectada</button>
+        <p>Durante la ventana de registro, las tarjetas no generan aperturas.</p>
+      </aside>
+    </section>
+
+    <!-- AUDITORIA -->
+    <section id="auditPanel" class="panel" role="tabpanel" aria-labelledby="tab-auditPanel" tabindex="0" hidden>
+      <h2>Auditoría administrativa</h2>
+      <ul id="audit" class="auditList"></ul>
+    </section>
+  </div>
+</main>
+<footer>Maqueta educativa · La confirmación del servo no demuestra apertura física sin sensor de puerta.</footer>
+</body>
+</html>

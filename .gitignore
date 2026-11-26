@@ -1,0 +1,33 @@
+# Configuracion y datos privados
+runtime/
+config.json
+users.json
+lock.json
+door.json
+pressure.json
+scale.json
+events/
+.env*
+*.key
+*.pem
+*.crt
+*.der
+*.csr
+*.p12
+*.pfx
+*.db*
+*.sqlite*
+*.log
+*.pid
+ACCESO-*.txt
+# Dependencias, compilados y pruebas
+node_modules/
+mosquitto/
+__pycache__/
+*.pyc
+*.mpy
+app_mpy/
+*.zip
+tests/
+test/
+Esp32_1_prueba/
